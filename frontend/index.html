@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIAKAD — Portal Sistem Informasi Akademik Universitas Siliwangi</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col antialiased">
+
+  <!-- ================= TOP NAVIGATION BAR KAMPUS ================= -->
+  <nav class="bg-blue-900 text-white shadow-md sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      
+      <!-- Logo & Nama Sistem -->
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="navigateHome()">
+        <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-xl text-amber-300 shadow-inner">
+          <i class="fa-solid fa-graduation-cap"></i>
+        </div>
+        <div>
+          <div class="font-extrabold text-base tracking-tight leading-tight flex items-center gap-2">
+            SIAKAD UNSIL <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-800 text-blue-200 border border-blue-700">Zero Trust Gateway</span>
+          </div>
+          <div class="text-[11px] text-blue-200">Sistem Pengelolaan Nilai & Transkrip Akademik</div>
+        </div>
+      </div>
+
+      <!-- Jam Operasional & Status Sesi -->
+      <div class="flex items-center space-x-3">
+        <!-- Jam WIB -->
+        <div class="bg-blue-950/70 border border-blue-800/80 px-3 py-1 rounded-lg text-xs text-blue-200 flex items-center gap-2 mono">
+          <i class="fa-regular fa-clock text-amber-300"></i>
+          <span id="jam-wib">--:--:-- WIB</span>
+          <span id="jam-status-badge" class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-900 text-emerald-300">07-21 WIB</span>
+        </div>
+
+        <!-- User Profile Nav (Saat Login) -->
+        <div id="nav-user-profile" class="hidden flex items-center space-x-3">
+          <div class="text-right">
+            <div id="nav-user-name" class="font-bold text-xs text-white">Nama Pengguna</div>
+            <div class="text-[10px] text-blue-300 flex items-center justify-end gap-1">
+              <span id="nav-user-role" class="px-1.5 py-0.2 rounded font-bold uppercase bg-blue-800 text-white text-[9px]">DOSEN</span>
+              <span id="nav-user-id" class="mono">NIP/NIM</span>
+            </div>
+          </div>
+          
+          <!-- Tombol Cek Token & Logout -->
+          <button onclick="openTokenModal()" title="Cek Token JWT & Device" class="bg-blue-800 hover:bg-blue-700 text-blue-200 text-xs p-2 rounded-lg transition" >
+            <i class="fa-solid fa-key"></i>
+          </button>
+          <button onclick="handleLogout()" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 shadow">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i> Keluar
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </nav>
+
+  <!-- ================= NOTIFIKASI POPUP (ALERT) ================= -->
+  <div id="alert-box" class="hidden fixed top-20 left-1/2 transform -translate-x-1/2 z-50 max-w-xl w-full px-4 transition-all">
+    <div id="alert-card" class="p-4 rounded-2xl shadow-2xl border flex items-start gap-3 bg-white text-slate-800">
+      <div id="alert-icon" class="text-2xl mt-0.5 shrink-0"></div>
+      <div class="flex-1">
+        <h4 id="alert-title" class="font-bold text-sm text-slate-900">Pemberitahuan</h4>
+        <div id="alert-msg" class="text-xs text-slate-600 mt-0.5 leading-relaxed"></div>
+      </div>
+      <button onclick="closeAlert()" class="text-slate-400 hover:text-slate-600 p-1">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= 1. HALAMAN LOGIN (PORTAL ASLI) ================= -->
+  <main id="view-login" class="flex-1 max-w-md w-full mx-auto p-4 my-auto flex flex-col justify-center space-y-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-8 space-y-5">
+      
+      <div class="text-center space-y-1">
+        <div class="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 text-blue-800 text-2xl flex items-center justify-center mx-auto shadow-inner mb-2">
+          <i class="fa-solid fa-user-shield"></i>
+        </div>
+        <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Masuk Akun SIAKAD</h2>
+        <p class="text-xs text-slate-500">Portal Sistem Nilai dengan Proteksi Zero Trust</p>
+      </div>
+
+      <!-- Pesan Error Login Ditolak (Merah Besar) -->
+      <div id="login-error-card" class="hidden p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs space-y-1">
+        <div class="font-bold flex items-center gap-1.5 text-sm text-red-700">
+          <i class="fa-solid fa-circle-exclamation text-base"></i> Akses Ditolak (401)
+        </div>
+        <div id="login-error-msg" class="text-slate-700 text-xs leading-relaxed">Pesan error...</div>
+      </div>
+
+      <!-- Form Login -->
+      <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Username / Akun</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs"><i class="fa-solid fa-user"></i></span>
+            <input type="text" id="login-username" required placeholder="misal: dosen_budi atau mhs_ahmad" class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Password</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs"><i class="fa-solid fa-lock"></i></span>
+            <input type="password" id="login-password" required placeholder="••••••••" class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600">
+          </div>
+        </div>
+
+        <!-- Pilihan Perangkat (Device Binding Bagian 4.3) -->
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label class="block text-xs font-bold text-slate-700">Perangkat (X-Device-ID):</label>
+            <span class="text-[10px] font-bold text-blue-700">Device Binding</span>
+          </div>
+          <select id="login-device-select" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+            <option value="REGISTERED"> [✓] Perangkat Resmi Terdaftar (Laptop Dosen / HP Mahasiswa)</option>
+            <option value="dev-hacker-hp">❌ [Uji Bobol] Perangkat Asing / Ilegal (dev-hacker-hp)</option>
+          </select>
+          <p class="text-[11px] text-slate-500 leading-tight">
+            Pilih "Perangkat Asing" untuk mendemokan bahwa Gateway menolak perangkat yang tidak terdaftar di database.
+          </p>
+        </div>
+
+        <button type="submit" id="btn-login-submit" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 rounded-xl text-xs transition shadow-md flex items-center justify-center gap-2">
+          <i class="fa-solid fa-right-to-bracket"></i> Masuk Sekarang
+        </button>
+      </form>
+
+      <!-- Tombol Pengisian Otomatis Akun Demo (Lengkap dengan Pembanding) -->
+      <div class="pt-3 border-t border-slate-200 space-y-2">
+        <span class="text-[11px] font-bold text-slate-500 block text-center uppercase tracking-wider">
+          Pilih Akun Demo & Pembanding:
+        </span>
+
+        <!-- Dosen (Pengampu & Pembanding) -->
+        <div>
+          <div class="text-[10px] font-bold text-blue-800 uppercase mb-1 flex items-center gap-1">
+            <i class="fa-solid fa-chalkboard-user"></i> Akun Dosen (Pembanding Kelas):
+          </div>
+          <div class="grid grid-cols-2 gap-1.5">
+            <button type="button" onclick="quickFill('dosen_budi', 'dosen123')" class="p-2 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 border border-blue-200 rounded-xl transition text-left flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0">B</div>
+              <div class="truncate">
+                <div class="text-[11px] font-bold text-blue-900 leading-tight">Dosen Budi</div>
+                <div class="text-[9px] text-blue-700">Kelas IF2101 (Keamanan)</div>
+              </div>
+            </button>
+            <button type="button" onclick="quickFill('dosen_siti', 'dosen123')" class="p-2 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-400 border border-indigo-200 rounded-xl transition text-left flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0">S</div>
+              <div class="truncate">
+                <div class="text-[11px] font-bold text-indigo-900 leading-tight">Dosen Siti <span class="text-[9px] font-normal text-indigo-600">(Pembanding)</span></div>
+                <div class="text-[9px] text-indigo-700">Kelas IF2102 (Jaringan)</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Mahasiswa (Pembanding Anti-IDOR) -->
+        <div>
+          <div class="text-[10px] font-bold text-emerald-800 uppercase mb-1 flex items-center gap-1">
+            <i class="fa-solid fa-user-graduate"></i> Akun Mahasiswa (Pembanding Anti-IDOR):
+          </div>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button type="button" onclick="quickFill('mhs_ahmad', 'mhs123')" class="p-1.5 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-400 border border-emerald-200 rounded-xl transition text-left">
+              <div class="text-[10px] font-bold text-emerald-900 leading-tight">Mhs Ahmad</div>
+              <div class="text-[9px] text-emerald-700 font-mono">247006001</div>
+            </button>
+            <button type="button" onclick="quickFill('mhs_rizki', 'mhs123')" class="p-1.5 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-400 border border-emerald-200 rounded-xl transition text-left">
+              <div class="text-[10px] font-bold text-emerald-900 leading-tight">Mhs Rizki</div>
+              <div class="text-[9px] text-emerald-700 font-mono">247006002</div>
+            </button>
+            <button type="button" onclick="quickFill('mhs_dewi', 'mhs123')" class="p-1.5 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-400 border border-emerald-200 rounded-xl transition text-left">
+              <div class="text-[10px] font-bold text-emerald-900 leading-tight">Mhs Dewi</div>
+              <div class="text-[9px] text-emerald-700 font-mono">247006003</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Administrator -->
+        <div>
+          <button type="button" onclick="quickFill('admin', 'admin123')" class="w-full p-2 bg-purple-50 hover:bg-purple-100 hover:border-purple-300 border border-purple-200 rounded-xl transition flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 rounded-lg bg-purple-600 text-white flex items-center justify-center font-bold text-xs"><i class="fa-solid fa-crown text-[10px]"></i></div>
+              <div class="text-left">
+                <span class="text-[11px] font-bold text-purple-900">Admin Akademik (Biro TI)</span>
+                <span class="text-[10px] text-purple-600 ml-1 font-mono">ADM001</span>
+              </div>
+            </div>
+            <span class="text-[9px] font-bold bg-purple-200 text-purple-800 px-2 py-0.5 rounded-full">Hak Istimewa Transkrip</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Demo Direct Access (Bypass Gateway Test) -->
+      <div class="pt-2 text-center">
+        <button type="button" onclick="testDirectAccessBypass()" class="text-xs text-rose-600 hover:text-rose-700 hover:underline font-semibold flex items-center justify-center gap-1 mx-auto">
+          <i class="fa-solid fa-shield-virus"></i> Uji Coba: Tembak Langsung Port 3001 (Bypass Gateway)
+        </button>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ================= 2. HALAMAN DASHBOARD UTAMA (SETELAH LOGIN) ================= -->
+  <main id="view-dashboard" class="hidden flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 space-y-6">
+
+    <!-- Sub-Navbar Menu Navigasi Peran -->
+    <div class="bg-white rounded-xl border border-slate-200 p-2 shadow-sm flex items-center justify-between">
+      <div class="flex space-x-1" id="role-menu-tabs">
+        <!-- Tab menu aktif di-render oleh JS sesuai role -->
+      </div>
+      <div class="text-xs text-slate-400 pr-2 hidden sm:block">
+        <i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i> Terhubung ke PEP Gateway Port 3000
+      </div>
+    </div>
+
+    <!-- ---------------- SECTION A: DOSEN WORKSPACE ---------------- -->
+    <div id="section-dosen" class="hidden space-y-6">
+      
+      <!-- Banner Kelas & Selector -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div class="text-xs font-bold text-blue-700 uppercase tracking-wider">Pengelolaan Nilai Mahasiswa</div>
+          <h1 class="text-xl font-extrabold text-slate-900 mt-0.5" id="dosen-kelas-title">IF2101 — Keamanan Informasi (3 SKS)</h1>
+          <p class="text-xs text-slate-500">Dosen Pengampu: <strong id="dosen-pengampu-display" class="text-slate-800">-</strong></p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <!-- Pilihan Kelas Dosen -->
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-slate-500 font-bold">Pilih Kelas:</label>
+            <select id="select-kelas-dosen" onchange="switchKelasDosen()" class="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none">
+              <option value="1">IF2101 — Keamanan Informasi (Ampuan Budi)</option>
+              <option value="2">IF2102 — Jaringan Komputer Lanjut (Ampuan Siti)</option>
+            </select>
+          </div>
+          <!-- Status Kelas (DRAFT / FINAL) -->
+          <div id="kelas-status-badge"></div>
+        </div>
+      </div>
+
+      <!-- Tabel Nilai Kelas -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+          <h3 class="font-bold text-xs uppercase text-slate-700 tracking-wider">Daftar Nilai Mahasiswa</h3>
+          <span class="text-xs text-slate-500">Jam Operasional Nilai: 07.00 – 21.00 WIB</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 text-slate-600 font-bold uppercase text-[11px] border-b border-slate-200">
+              <tr>
+                <th class="px-6 py-3.5">No</th>
+                <th class="px-6 py-3.5">NIM Mahasiswa</th>
+                <th class="px-6 py-3.5">Nama Mahasiswa</th>
+                <th class="px-6 py-3.5">Nilai Angka (0-100)</th>
+                <th class="px-6 py-3.5">Nilai Huruf</th>
+                <th class="px-6 py-3.5 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="table-nilai-dosen" class="divide-y divide-slate-100 font-medium">
+              <!-- Diisi JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Aksi Finalisasi & Uji Serangan S2S -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <!-- Box Finalisasi Kelas -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col justify-between space-y-3">
+          <div>
+            <h4 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-flag-checkered text-emerald-600"></i> Finalisasi Nilai Kelas & Sinkronisasi S2S
+            </h4>
+            <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+              Saat difinalisasi, Service Nilai akan meminta <strong>Token Service (5 menit)</strong> ke Gateway lalu mengirim data ke Service Transkrip via Gateway PEP Port 3000. Nilai kelas akan <strong>dikunci permanen (Immutable)</strong>.
+            </p>
+          </div>
+          <button onclick="handleFinalisasiKelas()" id="btn-finalisasi-act" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition shadow flex items-center justify-center gap-2">
+            <i class="fa-solid fa-check-double"></i> Finalisasi Nilai Kelas Sekarang
+          </button>
+        </div>
+
+        <!-- Box Uji Serangan Dosen (Ownership & S2S Sync Attack) -->
+        <div class="bg-amber-50 rounded-2xl border border-amber-200 p-5 shadow-sm flex flex-col justify-between space-y-3">
+          <div>
+            <div class="text-[10px] font-bold text-amber-800 uppercase tracking-wider">Uji Keamanan (Least Privilege & S2S)</div>
+            <h4 class="font-bold text-sm text-amber-950 mt-0.5 flex items-center gap-2">
+              <i class="fa-solid fa-shield-halved text-amber-600"></i> Uji Pelanggaran Akses Dosen
+            </h4>
+            <p class="text-xs text-amber-900/80 mt-1 leading-relaxed">
+              Membuktikan bahwa <strong>Dosen Budi</strong> tidak bisa mengubah nilai kelas <strong>Dosen Siti</strong> (IF2102), dan token user ditolak di endpoint sinkronisasi S2S.
+            </p>
+            <!-- Info pembanding -->
+            <div class="mt-2 grid grid-cols-2 gap-1.5">
+              <div class="bg-white border border-amber-200 rounded-lg px-2.5 py-1.5">
+                <div class="text-[9px] text-amber-700 font-bold uppercase">Login Sekarang</div>
+                <div class="text-[10px] font-bold text-slate-800">Dosen Budi → IF2101</div>
+              </div>
+              <div class="bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5">
+                <div class="text-[9px] text-red-600 font-bold uppercase">Target Kelas Dosen Lain</div>
+                <div class="text-[10px] font-bold text-red-800">Dosen Siti → IF2102 ✗</div>
+              </div>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="testCrossDosenTampering()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-3 rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-user-xmark"></i> Ubah Nilai Kelas Dosen Siti
+            </button>
+            <button onclick="testUserTokenToSync()" class="bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-3 rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-ban"></i> Token User ke S2S Sync
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ---------------- SECTION B: MAHASISWA WORKSPACE ---------------- -->
+    <div id="section-mahasiswa" class="hidden space-y-6">
+      
+      <!-- Profil & Ringkasan IPK -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div class="text-xs font-bold text-emerald-700 uppercase tracking-wider">Kartu Hasil Studi (KHS) & Transkrip</div>
+          <h1 class="text-xl font-extrabold text-slate-900 mt-1" id="mhs-name-display">Ahmad Fauzi</h1>
+          <p class="text-xs text-slate-500">NIM: <strong id="mhs-nim-display" class="font-mono text-slate-700">247006001</strong> · Informatika Universitas Siliwangi</p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="bg-blue-50 border border-blue-100 px-5 py-2.5 rounded-xl text-center">
+            <span class="text-[10px] font-bold text-blue-700 uppercase block">IPK Kumulatif</span>
+            <span id="mhs-ipk-display" class="text-2xl font-black text-blue-900">0.00</span>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-100 px-5 py-2.5 rounded-xl text-center">
+            <span class="text-[10px] font-bold text-emerald-700 uppercase block">Total SKS</span>
+            <span id="mhs-sks-display" class="text-2xl font-black text-emerald-900">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabel Transkrip Nilai Milik Sendiri -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+          <h3 class="font-bold text-xs uppercase text-slate-700 tracking-wider">Mata Kuliah pada Transkrip Anda</h3>
+          <span class="text-xs text-slate-500">Least Privilege: Hanya Nilai Sendiri</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 text-slate-600 font-bold uppercase text-[11px] border-b border-slate-200">
+              <tr>
+                <th class="px-6 py-3.5">Kode MK</th>
+                <th class="px-6 py-3.5">Nama Mata Kuliah</th>
+                <th class="px-6 py-3.5">SKS</th>
+                <th class="px-6 py-3.5">Nilai Huruf</th>
+                <th class="px-6 py-3.5">Bobot Mutu</th>
+              </tr>
+            </thead>
+            <tbody id="table-transkrip-mhs" class="divide-y divide-slate-100 font-medium">
+              <!-- Diisi JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Uji Coba IDOR (Mencoba Intip Transkrip Teman) -->
+      <div class="bg-amber-50 rounded-2xl border border-amber-200 p-6 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <h4 class="font-bold text-sm text-amber-950 flex items-center gap-2">
+            <i class="fa-solid fa-user-shield text-amber-600"></i> Uji Pelanggaran IDOR (Insecure Direct Object Reference)
+          </h4>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">Anti-IDOR Protection</span>
+        </div>
+        <p class="text-xs text-amber-900/80 leading-relaxed">
+          Sesuai aturan Zero Trust, mahasiswa <strong>hanya boleh melihat transkrip miliknya sendiri</strong>. Klik nama mahasiswa lain sebagai target serangan, lalu tekan tombol <em>"Coba Intip"</em> untuk membuktikan Gateway PEP berhasil menghadangnya:
+        </p>
+
+        <!-- Tombol Pilih Target NIM Mahasiswa Lain (Pembanding) -->
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="setIdorTarget('247006001','Ahmad Fauzi')" class="p-2 rounded-xl border border-amber-300 bg-white hover:bg-amber-100 text-left transition">
+            <div class="text-[10px] font-bold text-slate-800">Ahmad Fauzi</div>
+            <div class="text-[9px] font-mono text-amber-700">247006001</div>
+          </button>
+          <button onclick="setIdorTarget('247006002','Rizki Pratama')" class="p-2 rounded-xl border border-amber-300 bg-white hover:bg-amber-100 text-left transition">
+            <div class="text-[10px] font-bold text-slate-800">Rizki Pratama</div>
+            <div class="text-[9px] font-mono text-amber-700">247006002</div>
+          </button>
+          <button onclick="setIdorTarget('247006003','Dewi Lestari')" class="p-2 rounded-xl border border-amber-300 bg-white hover:bg-amber-100 text-left transition">
+            <div class="text-[10px] font-bold text-slate-800">Dewi Lestari</div>
+            <div class="text-[9px] font-mono text-amber-700">247006003</div>
+          </button>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-2">
+          <div class="relative flex-1">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-amber-500 text-xs"><i class="fa-solid fa-crosshairs"></i></span>
+            <input type="text" id="idor-target-nim" value="247006002" placeholder="NIM Target IDOR" class="bg-white border border-amber-300 rounded-xl pl-8 pr-3 py-2.5 text-xs text-slate-900 w-full focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono">
+          </div>
+          <button onclick="testIdorAttack()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition shadow flex items-center justify-center gap-2 shrink-0">
+            <i class="fa-solid fa-eye-slash"></i> Coba Intip Transkrip Ini
+          </button>
+        </div>
+        <p class="text-[10px] text-amber-800/70 italic">💡 Coba login sebagai Mahasiswa Rizki atau Dewi, lalu intip transkrip mahasiswa lain — hasilnya tetap ditolak (403).</p>
+      </div>
+
+    </div>
+
+    <!-- ---------------- SECTION C: ADMIN WORKSPACE ---------------- -->
+    <div id="section-admin" class="hidden space-y-6">
+      
+      <!-- Pencarian Transkrip Seluruh Mahasiswa -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div>
+          <div class="text-xs font-bold text-purple-700 uppercase tracking-wider">Biro Administrasi Akademik (Admin TI)</div>
+          <h1 class="text-xl font-extrabold text-slate-900 mt-1">Pemeriksaan Transkrip Seluruh Mahasiswa</h1>
+          <p class="text-xs text-slate-500">Sebagai Admin, Anda memiliki hak istimewa resmi untuk memeriksa transkrip seluruh NIM.</p>
+        </div>
+
+        <div class="flex gap-2">
+          <input type="text" id="admin-search-nim" value="247006002" placeholder="Ketik NIM Mahasiswa" class="bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-xs text-slate-900 flex-1 focus:outline-none focus:ring-2 focus:ring-purple-600 font-mono">
+          <button onclick="adminSearchTranscript()" class="bg-purple-700 hover:bg-purple-800 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition shadow flex items-center gap-2">
+            <i class="fa-solid fa-magnifying-glass"></i> Cari Transkrip Mahasiswa
+          </button>
+        </div>
+
+        <!-- Hasil Transkrip Admin -->
+        <div id="admin-result-card" class="hidden p-5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+          <!-- Diisi JS -->
+        </div>
+      </div>
+
+      <!-- Monitoring Status Kelas -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+        <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-chalkboard text-blue-600"></i> Monitoring Status Seluruh Kelas
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="admin-kelas-status-grid">
+          <!-- Diisi JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ---------------- SECTION D: AUDIT LOG VIEWER (UNTUK SEMUA ROLE / ADMIN) ---------------- -->
+    <div id="section-audit" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-clipboard-check text-blue-700 text-base"></i>
+          <div>
+            <h3 class="font-bold text-xs text-slate-800 uppercase tracking-wider">Telemetri Audit Log Keamanan (Tercatat di SQLite secara Realtime)</h3>
+            <p class="text-[11px] text-slate-500">Mencatat waktu, subjek, endpoint, device, keputusan ALLOW/DENY, dan alasan kebijakan (NIST SP 800-207 Bagian 4.4)</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <select id="select-audit-filter" onchange="loadAuditLogsTable()" class="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-700">
+            <option value="ALL">Semua Keputusan</option>
+            <option value="ALLOW">Hanya ALLOW</option>
+            <option value="DENY">Hanya DENY</option>
+          </select>
+          <button onclick="loadAuditLogsTable()" class="text-xs bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold px-3 py-1 rounded-lg transition flex items-center gap-1">
+            <i class="fa-solid fa-rotate"></i> Segarkan Log
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabel Audit Log -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left font-mono text-[11px] text-slate-700">
+          <thead class="bg-slate-100 text-slate-500 uppercase text-[10px] border-b border-slate-200">
+            <tr>
+              <th class="px-3 py-2">Waktu (WIB)</th>
+              <th class="px-3 py-2">Subjek</th>
+              <th class="px-3 py-2">Role</th>
+              <th class="px-3 py-2">Method & Endpoint</th>
+              <th class="px-3 py-2">Device ID</th>
+              <th class="px-3 py-2">Keputusan</th>
+              <th class="px-3 py-2">Alasan Kebijakan (Policy Engine Reason)</th>
+            </tr>
+          </thead>
+          <tbody id="table-audit-body" class="divide-y divide-slate-100">
+            <tr><td colspan="7" class="text-center py-4 text-slate-400">Memuat log...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ================= MODAL EDIT NILAI (DOSEN) ================= -->
+  <div id="modal-edit-nilai" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 border border-slate-200">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 class="font-bold text-sm text-slate-900">Ubah Nilai Mahasiswa</h3>
+        <button onclick="closeModalEditNilai()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="space-y-3">
+        <input type="hidden" id="modal-nilai-id">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">NIM Mahasiswa</label>
+          <input type="text" id="modal-nim-show" readonly class="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-600 font-mono">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Nilai Angka (0 – 100)</label>
+          <input type="number" id="modal-score-input" step="0.5" min="0" max="100" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Nilai Huruf</label>
+          <select id="modal-letter-input" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none">
+            <option value="A">A (Bobot 4.0)</option>
+            <option value="A-">A- (Bobot 3.7)</option>
+            <option value="B+">B+ (Bobot 3.3)</option>
+            <option value="B">B (Bobot 3.0)</option>
+            <option value="B-">B- (Bobot 2.7)</option>
+            <option value="C+">C+ (Bobot 2.3)</option>
+            <option value="C">C (Bobot 2.0)</option>
+            <option value="D+">D+ (Bobot 1.7)</option>
+            <option value="D">D (Bobot 1.3)</option>
+            <option value="D-">D- (Bobot 1.0)</option>
+            <option value="E">E (Bobot 0.0)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeModalEditNilai()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition">Batal</button>
+        <button onclick="submitSimpanNilai()" class="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 rounded-xl text-xs transition shadow">Simpan Perubahan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL TOKEN & DEVICE INSPECTOR ================= -->
+  <div id="modal-token" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 border border-slate-200">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-key text-blue-700"></i>
+          <h3 class="font-bold text-sm text-slate-900">Informasi Sesi & Token JWT</h3>
+        </div>
+        <button onclick="closeTokenModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-2 font-mono text-[11px]">
+          <div class="p-2 bg-slate-50 border rounded-lg">
+            <span class="text-slate-400 text-[10px] block">PERAN (RBAC):</span>
+            <span id="token-role-text" class="font-bold text-blue-700">-</span>
+          </div>
+          <div class="p-2 bg-slate-50 border rounded-lg">
+            <span class="text-slate-400 text-[10px] block">DEVICE ID BOUND:</span>
+            <span id="token-dev-text" class="font-bold text-amber-700">-</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-600 font-bold mb-1">Access Token (Bearer JWT, Masa Berlaku 10 Menit):</label>
+          <textarea id="token-access-preview" readonly rows="3" class="w-full bg-slate-50 border rounded-xl p-2 font-mono text-[10px] text-slate-600 select-all"></textarea>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button onclick="handleRefreshTokenRotation()" class="flex-1 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold py-2 rounded-xl transition flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-arrows-rotate"></i> Refresh Token Rotation
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer Website Beneran -->
+  <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400 mt-auto">
+    Portal SIAKAD &copy; 2026 Universitas Siliwangi · Dilindungi oleh Policy Enforcement Point (PEP) Port 3000
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

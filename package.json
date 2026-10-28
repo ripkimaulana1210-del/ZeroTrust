@@ -1,0 +1,31 @@
+{
+  "name": "zero-trust-security",
+  "version": "1.0.0",
+  "description": "Proyek Praktikum Individu Zero Trust Security - Keamanan Informasi Universitas Siliwangi",
+  "main": "index.js",
+  "scripts": {
+    "start:gateway": "node gateway/index.js",
+    "start:nilai": "node services/nilai/index.js",
+    "start:transkrip": "node services/transkrip/index.js",
+    "db:init": "node database/init.js",
+    "db:reset": "node database/reset.js",
+    "test": "node --test tests/**/*.test.js"
+  },
+  "keywords": [
+    "zero-trust",
+    "nist-sp-800-207",
+    "pep",
+    "policy-engine",
+    "sqlite"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3"
+  }
+}
